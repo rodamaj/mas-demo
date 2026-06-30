@@ -209,15 +209,12 @@
           }
         }
 
-        receiveBroadcast(message) {
+        receiveMessage(message) {
           const normalized = message.trim().toLowerCase();
           this.lastMessage = normalized || 'empty';
-          const [recipient, content] = normalized.split(':');
           this.flash = 25;
 
-          if (recipient === this.id) {
-            this.state = `received: ${content}`;
-          } else if (normalized === 'stop') {
+          if (normalized === 'stop') {
             this.vx = 0;
             this.vy = 0;
             this.state = 'stopped';
@@ -297,11 +294,36 @@
             ' agents.',
         );
 
-        agents.forEach((agent) => agent.receiveBroadcast(message));
+        agents.forEach((agent) => agent.receiveMessage(message));
         input.focus();
       }
 
-      function sendDirectMessage() {}
+      function sendDirectMessage() {
+        const targetInput = document.getElementById('targetAgentInput');
+        const messageInput = document.getElementById('directMessageInput');
+        const targetAgentId = Number(targetInput.value);
+        const message = messageInput.value.trim();
+        const targetAgent = agents.find((agent) => agent.id === targetAgentId);
+
+        if (!targetAgent) {
+          logMessage(
+            'Agent ' + (targetInput.value || '(empty)') + ' not found.',
+          );
+          targetInput.focus();
+          return;
+        }
+
+        logMessage(
+          'System sending "' +
+            (message || 'empty message') +
+            '" to Agent ' +
+            targetAgent.id +
+            '.',
+        );
+
+        targetAgent.receiveMessage(message);
+        messageInput.focus();
+      }
 
       document
         .getElementById('addAgentBtn')
