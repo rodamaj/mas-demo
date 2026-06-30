@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MAS Agents Broadcast Demo</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  </head>
+  <body class="w3-light-grey">
+    <a
+      href="#main"
+      class="w3-button w3-small w3-white"
+      style="position: absolute; left: -9999px; top: auto"
+      onfocus="this.style.left = '8px'"
+      onblur="this.style.left = '-9999px'"
+      >Skip to content</a
+    >
+
+    <header class="w3-container w3-teal w3-padding-24">
+      <h1 class="w3-margin-0">Multi-Agent Systems: Agent communication</h1>
+      <p class="w3-margin-top">Simple communication.</p>
+    </header>
+
+    <main id="main" class="w3-content" style="max-width: 1200px">
+      <section class="w3-row-padding w3-padding-24">
+        <div class="w3-col l8 m12 s12">
+          <div class="w3-card w3-white w3-round-large w3-padding">
+            <h2 class="w3-large">Agent Space</h2>
+            <p>
+              Each circle is an agent. Agents move, keep a small state, and can
+              receive broadcasts from the control panel.
+            </p>
+            <div
+              id="canvas-holder"
+              class="w3-border w3-round-large"
+              aria-label="Agent simulation canvas"
+            ></div>
+          </div>
+        </div>
+
+        <div class="w3-col l4 m12 s12">
+          <div
+            class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom"
+          >
+            <h2 class="w3-large">Controls</h2>
+            <p>
+              Use the first button to add agents. Use the textbox and second
+              button to broadcast a message to all current agents.
+            </p>
+            <button
+              id="addAgentBtn"
+              class="w3-button w3-teal w3-round-large w3-margin-bottom"
+              type="button"
+            >
+              Add agent
+            </button>
+
+            <label class="w3-text-dark-grey" for="broadcastInput"
+              >Broadcast message</label
+            >
+            <div
+              class="w3-cell-row w3-margin-top"
+              role="group"
+              aria-label="Broadcast controls"
+            >
+              <div class="w3-cell" style="width: 75%; padding-right: 8px">
+                <input
+                  id="broadcastInput"
+                  class="w3-input w3-border w3-round-large"
+                  type="text"
+                  placeholder="Examples: greet, stop, disperse, gather, alert"
+                />
+              </div>
+              <div class="w3-cell" style="vertical-align: top; width: 25%">
+                <button
+                  id="broadcastBtn"
+                  class="w3-button w3-blue w3-round-large w3-block"
+                  type="button"
+                >
+                  Broadcast
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom"
+          >
+            <h2 class="w3-large">System State</h2>
+            <p><strong>Agents:</strong> <span id="agentCount">0</span></p>
+            <p>
+              <strong>Last broadcast:</strong>
+              <span id="lastBroadcast">none</span>
+            </p>
+            <p>
+              <strong>Model:</strong> One shared environment, many autonomous
+              agents, one simple broadcast channel.
+            </p>
+          </div>
+
+          <div class="w3-card w3-white w3-round-large w3-padding">
+            <h2 class="w3-large">Communication Log</h2>
+            <div
+              id="log"
+              class="w3-small w3-border w3-round-large w3-padding"
+              style="height: 260px; overflow: auto; background: #f9f9f9"
+            >
+              <p class="w3-text-grey">Log initialized.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const agents = [];
+      let nextAgentId = 1;
+      let latestBroadcast = 'none';
+
+      const COLORS = [
+        '#009688',
+        '#2196F3',
+        '#4CAF50',
+        '#FF9800',
+        '#9C27B0',
+        '#F44336',
+      ];
+
+      function logMessage(message) {
+        const log = document.getElementById('log');
+        const entry = document.createElement('p');
+        entry.className = 'w3-margin-top w3-margin-bottom';
+        entry.textContent =
+          '[' + new Date().toLocaleTimeString() + '] ' + message;
+        log.prepend(entry);
+      }
+
+      function updateStatus() {
+        document.getElementById('agentCount').textContent = agents.length;
+        document.getElementById('lastBroadcast').textContent = latestBroadcast;
+      }
+
+      class Agent {
+        constructor(id) {
+          this.id = id;
+          this.x = random(40, width - 40);
+          this.y = random(40, height - 40);
+          this.vx = random(-1.5, 1.5);
+          this.vy = random(-1.5, 1.5);
+          this.size = random(24, 40);
+          this.color = random(COLORS);
+          this.state = 'idle';
+          this.lastMessage = 'none';
+          this.flash = 0;
+        }
+
+        move() {
+          this.x += this.vx;
+          this.y += this.vy;
+
+          if (this.x < this.size / 2 || this.x > width - this.size / 2) {
+            this.vx *= -1;
+          }
+          if (this.y < this.size / 2 || this.y > height - this.size / 2) {
+            this.vy *= -1;
+          }
+        }
+
+        receiveBroadcast(message) {
+          const normalized = message.trim().toLowerCase();
+          this.lastMessage = normalized || 'empty';
+          const [recipient, content] = normalized.split(':');
+          this.flash = 25;
+
+          if (recipient === this.id) {
+            this.state = `received: ${content}`;
+          } else if (normalized === 'stop') {
+            this.vx = 0;
+            this.vy = 0;
+            this.state = 'stopped';
+          } else if (normalized === 'move') {
+            this.vx = random(-2, 2);
+            this.vy = random(-2, 2);
+            this.state = 'moving';
+          } else if (normalized === 'gather') {
+            this.vx += (width / 2 - this.x) * 0.01;
+            this.vy += (height / 2 - this.y) * 0.01;
+            this.state = 'gathering';
+          } else if (normalized === 'disperse') {
+            this.vx += random(-2, 2);
+            this.vy += random(-2, 2);
+            this.state = 'dispersing';
+          } else if (normalized === 'alert') {
+            this.vx *= 1.5;
+            this.vy *= 1.5;
+            this.state = 'alert';
+          } else if (normalized === 'greet') {
+            this.state = 'greeting';
+          } else {
+            this.state = 'heard: ' + (normalized || 'empty');
+          }
+
+          logMessage(
+            'Agent ' +
+              this.id +
+              ' received "' +
+              (message || '(empty)') +
+              '" and changed state to ' +
+              this.state +
+              '.',
+          );
+        }
+
+        draw() {
+          stroke(40);
+          strokeWeight(this.flash > 0 ? 3 : 1);
+          fill(this.color);
+          ellipse(this.x, this.y, this.size, this.size);
+
+          fill(255);
+          noStroke();
+          textAlign(CENTER, CENTER);
+          textSize(12);
+          text(this.id, this.x, this.y);
+
+          fill(30);
+          textSize(11);
+          text(this.state, this.x, this.y + this.size / 2 + 12);
+
+          if (this.flash > 0) {
+            this.flash -= 1;
+          }
+        }
+      }
+
+      function addAgent() {
+        const agent = new Agent(nextAgentId++);
+        agents.push(agent);
+        updateStatus();
+        logMessage('Agent ' + agent.id + ' created.');
+      }
+
+      function broadcastMessage() {
+        const input = document.getElementById('broadcastInput');
+        const message = input.value.trim();
+
+        latestBroadcast = message || 'empty message';
+        updateStatus();
+        logMessage(
+          'System broadcasting "' +
+            latestBroadcast +
+            '" to ' +
+            agents.length +
+            ' agents.',
+        );
+
+        agents.forEach((agent) => agent.receiveBroadcast(message));
+        input.focus();
+      }
+
+      document
+        .getElementById('addAgentBtn')
+        .addEventListener('click', addAgent);
+      document
+        .getElementById('broadcastBtn')
+        .addEventListener('click', broadcastMessage);
+      document
+        .getElementById('broadcastInput')
+        .addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') {
+            broadcastMessage();
+          }
+        });
+
+      function setup() {
+        const canvas = createCanvas(760, 460);
+        canvas.parent('canvas-holder');
+        textFont('Arial');
+        addAgent();
+        addAgent();
+        addAgent();
+      }
+
+      function draw() {
+        background(245);
+
+        stroke(220);
+        strokeWeight(1);
+        for (let x = 0; x < width; x += 40) {
+          line(x, 0, x, height);
+        }
+        for (let y = 0; y < height; y += 40) {
+          line(0, y, width, y);
+        }
+
+        agents.forEach((agent) => {
+          agent.move();
+          agent.draw();
+        });
+
+        noStroke();
+        fill(60);
+        textAlign(LEFT, TOP);
+        textSize(14);
+        text('Broadcast channel: one-to-many communication', 12, 12);
+      }
+
+      function windowResized() {
+        const holder = document.getElementById('canvas-holder');
+        const newWidth = Math.min(760, holder.clientWidth - 2);
+        resizeCanvas(newWidth, 460);
+      }
+    </script>
+  </body>
+</html>
