@@ -82,6 +82,48 @@
                 </button>
               </div>
             </div>
+
+            <div class="w3-margin-top">
+              <label class="w3-text-dark-grey" for="targetAgentInput"
+                >Target agent</label
+              >
+              <input
+                id="targetAgentInput"
+                class="w3-input w3-border w3-round-large w3-margin-top"
+                type="number"
+                min="1"
+                placeholder="Agent ID"
+              />
+
+              <label
+                class="w3-text-dark-grey w3-margin-top w3-block"
+                for="directMessageInput"
+                >Direct message</label
+              >
+              <div
+                class="w3-cell-row w3-margin-top"
+                role="group"
+                aria-label="Direct message controls"
+              >
+                <div class="w3-cell" style="width: 65%; padding-right: 8px">
+                  <input
+                    id="directMessageInput"
+                    class="w3-input w3-border w3-round-large"
+                    type="text"
+                    placeholder="Message for one agent"
+                  />
+                </div>
+                <div class="w3-cell" style="vertical-align: top; width: 35%">
+                  <button
+                    id="sendDirectMessageBtn"
+                    class="w3-button w3-indigo w3-round-large w3-block"
+                    type="button"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div
@@ -259,12 +301,17 @@
         input.focus();
       }
 
+      function sendDirectMessage() {}
+
       document
         .getElementById('addAgentBtn')
         .addEventListener('click', addAgent);
       document
         .getElementById('broadcastBtn')
         .addEventListener('click', broadcastMessage);
+      document
+        .getElementById('sendDirectMessageBtn')
+        .addEventListener('click', sendDirectMessage);
       document
         .getElementById('broadcastInput')
         .addEventListener('keydown', function (event) {
